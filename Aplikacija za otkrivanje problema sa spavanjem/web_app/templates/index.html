@@ -1,0 +1,524 @@
+<!DOCTYPE html>
+<html lang="sr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Predikcija poremećaja spavanja</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            font-weight: 300;
+        }
+
+        .header p {
+            font-size: 1.1em;
+            opacity: 0.9;
+        }
+
+        .form-container {
+            padding: 40px;
+        }
+
+        .form-group {
+            margin-bottom: 25px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #333;
+            font-size: 1.1em;
+        }
+
+        .form-group input,
+        .form-group select {
+            width: 100%;
+            padding: 12px 15px;
+            border: 2px solid #e1e5e9;
+            border-radius: 8px;
+            font-size: 1em;
+            transition: border-color 0.3s ease;
+        }
+
+        .form-group input:focus,
+        .form-group select:focus {
+            outline: none;
+            border-color: #4facfe;
+            box-shadow: 0 0 0 3px rgba(79, 172, 254, 0.1);
+        }
+
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+
+        .submit-btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 15px 40px;
+            border: none;
+            border-radius: 8px;
+            font-size: 1.2em;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s ease;
+            width: 100%;
+            margin-top: 20px;
+        }
+
+        .submit-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(0,0,0,0.2);
+        }
+
+        .submit-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 20px;
+        }
+
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #4facfe;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .result-container {
+            display: none;
+            padding: 40px;
+            background: #f8f9fa;
+            border-top: 1px solid #e1e5e9;
+        }
+
+        .result-header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .prediction {
+            font-size: 2em;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+
+        .confidence {
+            font-size: 1.2em;
+            color: #666;
+        }
+
+        .probabilities {
+            margin-bottom: 30px;
+        }
+
+        .prob-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 15px;
+            margin-bottom: 10px;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+
+        .prob-bar {
+            width: 100px;
+            height: 8px;
+            background: #e1e5e9;
+            border-radius: 4px;
+            overflow: hidden;
+        }
+
+        .prob-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #4facfe, #00f2fe);
+            transition: width 0.3s ease;
+        }
+
+        .recommendations {
+            background: white;
+            padding: 25px;
+            border-radius: 8px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+
+        .recommendations h3 {
+            color: #333;
+            margin-bottom: 15px;
+            font-size: 1.3em;
+        }
+
+        .recommendations ul {
+            list-style: none;
+        }
+
+        .recommendations li {
+            padding: 8px 0;
+            border-bottom: 1px solid #f0f0f0;
+            font-size: 1.1em;
+        }
+
+        .recommendations li:last-child {
+            border-bottom: none;
+        }
+
+        .error {
+            background: #fee;
+            color: #c33;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            border-left: 4px solid #c33;
+        }
+
+        .success {
+            background: #efe;
+            color: #363;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            border-left: 4px solid #363;
+        }
+
+        @media (max-width: 768px) {
+            .form-row {
+                grid-template-columns: 1fr;
+            }
+            
+            .container {
+                margin: 10px;
+                border-radius: 10px;
+            }
+            
+            .form-container {
+                padding: 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🔮 Predikcija poremećaja spavanja</h1>
+            <p>Unesite svoje podatke i saznajte kakvi su rizici za poremećaje spavanja</p>
+        </div>
+
+        <div class="form-container">
+            <form id="predictionForm">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="Gender">Pol *</label>
+                        <select id="Gender" name="Gender" required>
+                            <option value="">Izaberite pol</option>
+                            <option value="Male">Muški</option>
+                            <option value="Female">Ženski</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="Age">Uzrast *</label>
+                        <input type="number" id="Age" name="Age" min="0" max="120" required>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="Occupation">Zanimanje *</label>
+                    <input type="text" id="Occupation" name="Occupation" required>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="Sleep Duration">Trajanje spavanja (sati) *</label>
+                        <input type="number" id="Sleep Duration" name="Sleep Duration" min="0" max="24" step="0.1" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="Quality of Sleep">Kvalitet spavanja (1-10) *</label>
+                        <input type="number" id="Quality of Sleep" name="Quality of Sleep" min="1" max="10" required>
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="Physical Activity Level">Nivo fizičke aktivnosti *</label>
+                        <input type="number" id="Physical Activity Level" name="Physical Activity Level" min="0" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="Stress Level">Nivo stresa (1-10) *</label>
+                        <input type="number" id="Stress Level" name="Stress Level" min="1" max="10" required>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="BMI Category">BMI kategorija *</label>
+                    <select id="BMI Category" name="BMI Category" required>
+                        <option value="">Izaberite BMI kategoriju</option>
+                        <option value="Underweight">Underweight</option>
+                        <option value="Normal">Normal</option>
+                        <option value="Overweight">Overweight</option>
+                        <option value="Obese">Obese</option>
+                    </select>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="Blood Pressure">Krvni pritisak *</label>
+                        <input type="text" id="Blood Pressure" name="Blood Pressure" placeholder="npr. 120/80" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="Heart Rate">Otkucaji srca *</label>
+                        <input type="number" id="Heart Rate" name="Heart Rate" min="30" max="200" required>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="Daily Steps">Dnevni koraci *</label>
+                    <input type="number" id="Daily Steps" name="Daily Steps" min="0" required>
+                </div>
+
+                <button type="submit" class="submit-btn" id="submitBtn">
+                    🔮 Napravi predikciju
+                </button>
+            </form>
+
+            <div class="loading" id="loading">
+                <div class="spinner"></div>
+                <p>Analiziram podatke...</p>
+            </div>
+
+            <div id="errorContainer"></div>
+        </div>
+
+        <div class="result-container" id="resultContainer">
+            <div class="result-header">
+                <div class="prediction" id="prediction"></div>
+                <div class="confidence" id="confidence"></div>
+            </div>
+
+            <div class="probabilities">
+                <h3>Verovatnoće po klasama:</h3>
+                <div id="probabilitiesList"></div>
+            </div>
+
+            <div class="recommendations">
+                <h3>💡 Preporuke:</h3>
+                <ul id="recommendationsList"></ul>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const form = document.getElementById('predictionForm');
+        const submitBtn = document.getElementById('submitBtn');
+        const loading = document.getElementById('loading');
+        const resultContainer = document.getElementById('resultContainer');
+        const errorContainer = document.getElementById('errorContainer');
+
+        form.addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            // Prikazivanje loading-a
+            submitBtn.disabled = true;
+            loading.style.display = 'block';
+            resultContainer.style.display = 'none';
+            errorContainer.innerHTML = '';
+
+            try {
+                // Prikupljanje podataka iz forme
+                const formData = new FormData(form);
+                const data = {};
+                
+                for (let [key, value] of formData.entries()) {
+                    // Konvertovanje numeričkih polja
+                    if (['Age', 'Sleep Duration', 'Quality of Sleep', 'Physical Activity Level', 'Stress Level', 'Heart Rate', 'Daily Steps'].includes(key)) {
+                        data[key] = parseFloat(value);
+                    } else {
+                        data[key] = value;
+                    }
+                }
+
+                // Slanje zahteva na API
+                const response = await fetch('/api/predict', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(data)
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    displayResult(result);
+                } else {
+                    displayError(result.error || 'Nepoznata greška');
+                }
+
+            } catch (error) {
+                displayError('Greška pri komunikaciji sa serverom: ' + error.message);
+            } finally {
+                // Skrivanje loading-a
+                submitBtn.disabled = false;
+                loading.style.display = 'none';
+            }
+        });
+
+        function displayResult(result) {
+            // Prikazivanje predikcije
+            document.getElementById('prediction').textContent = result.prediction;
+            document.getElementById('confidence').textContent = 
+                `Sigurnost: ${(result.confidence * 100).toFixed(1)}%`;
+
+            // Prikazivanje verovatnoća
+            const probabilitiesList = document.getElementById('probabilitiesList');
+            probabilitiesList.innerHTML = '';
+
+            result.sorted_probabilities.forEach(([className, prob]) => {
+                const probItem = document.createElement('div');
+                probItem.className = 'prob-item';
+                
+                probItem.innerHTML = `
+                    <span>${className}</span>
+                    <div class="prob-bar">
+                        <div class="prob-fill" style="width: ${prob * 100}%"></div>
+                    </div>
+                    <span>${(prob * 100).toFixed(1)}%</span>
+                `;
+                
+                probabilitiesList.appendChild(probItem);
+            });
+
+            // Prikazivanje preporuka
+            const recommendationsList = document.getElementById('recommendationsList');
+            recommendationsList.innerHTML = '';
+
+            result.recommendations.forEach(rec => {
+                const li = document.createElement('li');
+                li.textContent = rec;
+                recommendationsList.appendChild(li);
+            });
+
+            // Prikazivanje rezultata
+            resultContainer.style.display = 'block';
+            resultContainer.scrollIntoView({ behavior: 'smooth' });
+        }
+
+        function displayError(message) {
+            errorContainer.innerHTML = `
+                <div class="error">
+                    <strong>Greška:</strong> ${message}
+                </div>
+            `;
+        }
+
+        // Validacija u realnom vremenu
+        const inputs = form.querySelectorAll('input, select');
+        inputs.forEach(input => {
+            input.addEventListener('blur', function() {
+                validateField(this);
+            });
+        });
+
+        function validateField(field) {
+            const value = field.value.trim();
+            const name = field.name;
+            
+            // Uklanjanje postojećih grešaka
+            const existingError = field.parentNode.querySelector('.field-error');
+            if (existingError) {
+                existingError.remove();
+            }
+
+            if (!value) {
+                showFieldError(field, 'Ovo polje je obavezno');
+                return false;
+            }
+
+            // Specifične validacije
+            if (name === 'Age' && (value < 0 || value > 120)) {
+                showFieldError(field, 'Uzrast mora biti između 0 i 120');
+                return false;
+            }
+
+            if (name === 'Sleep Duration' && (value < 0 || value > 24)) {
+                showFieldError(field, 'Trajanje spavanja mora biti između 0 i 24 sata');
+                return false;
+            }
+
+            if (name === 'Quality of Sleep' && (value < 1 || value > 10)) {
+                showFieldError(field, 'Kvalitet spavanja mora biti između 1 i 10');
+                return false;
+            }
+
+            if (name === 'Stress Level' && (value < 1 || value > 10)) {
+                showFieldError(field, 'Nivo stresa mora biti između 1 i 10');
+                return false;
+            }
+
+            if (name === 'Heart Rate' && (value < 30 || value > 200)) {
+                showFieldError(field, 'Otkucaji srca moraju biti između 30 i 200');
+                return false;
+            }
+
+            return true;
+        }
+
+        function showFieldError(field, message) {
+            const errorDiv = document.createElement('div');
+            errorDiv.className = 'field-error';
+            errorDiv.style.color = '#c33';
+            errorDiv.style.fontSize = '0.9em';
+            errorDiv.style.marginTop = '5px';
+            errorDiv.textContent = message;
+            
+            field.parentNode.appendChild(errorDiv);
+            field.style.borderColor = '#c33';
+        }
+    </script>
+</body>
+</html>
