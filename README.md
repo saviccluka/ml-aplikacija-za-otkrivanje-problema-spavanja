@@ -155,6 +155,8 @@ Jupyter Notebook — analysis
 Joblib — model persistence
 
 
-Author
+## Author
 
-Luka Savić
+1.Luka Savic 
+2.Anastasija Anicic
+
